@@ -1,6 +1,5 @@
 let words;
-let pos;
-let blocks = [];
+let containers = [];
 
 let dragIndex; 
 let overlapIndex;
@@ -30,7 +29,7 @@ function loadInstructionBlocks(y) {
       }
       x += word.w + Container.PADDING.INTER;
     }
-    blocks.push(container);
+    containers.push(container);
     y += Word.h;
   }
 }
@@ -39,12 +38,11 @@ function setup() {
   createCanvas(windowWidth-20, windowHeight-20);
   words = shuffle(words).map( word => new Word(word) );
   layoutWords();
-  
   background(255);
 }
 
 function layoutWords() {
-  blocks = [];
+  containers = [];
   let x = Container.PADDING.INTER;
   let dy = Word.h;
   let y = Container.PADDING.INTER;
@@ -53,7 +51,7 @@ function layoutWords() {
       y += (dy+Container.PADDING.INTER);
       x = Container.PADDING.INTER;
     }
-    blocks.push(Container.createWithWordAt(word,createVector(x,y)));
+    containers.push(Container.createWithWordAt(word,createVector(x,y)));
     x += word.w+Container.PADDING.INTER;
   }
   loadInstructionBlocks(y + 2 * dy );  
@@ -61,7 +59,7 @@ function layoutWords() {
 
 function draw() {
   background('white')
-  for( let b of blocks ) {
+  for( let b of containers ) {
     b.draw();
   }
 }
@@ -69,13 +67,11 @@ function draw() {
 function doubleClicked() {
   dragIndex = null;
   overlapIndex = null;
-  for( let i = 0; i < blocks.length; i++ ) {
-    if( blocks[i].isMouseInside() && blocks[i].words.length > 1 ) {
-      const b = blocks[i];
-      blocks.splice(i,1);
-      blocks.push( ...b.breakApart() )
-      // blocks = [...blocks, ...blocks[i].breakApart()];
-      // blocks.splice(i,1);
+  for( let i = 0; i < containers.length; i++ ) {
+    if( containers[i].isMouseInside() && containers[i].words.length > 1 ) {
+      const b = containers[i];
+      containers.splice(i,1);
+      containers = [...containers, ...b.breakApart()]
       return;
     }
   }
@@ -83,8 +79,8 @@ function doubleClicked() {
 
 
 function mousePressed() {
-  for( let i = 0; i < blocks.length; i++ ) {
-    if( blocks[i].isMouseInside() ) {
+  for( let i = 0; i < containers.length; i++ ) {
+    if( containers[i].isMouseInside() ) {
       dragIndex = i;
       return
     }
@@ -93,17 +89,17 @@ function mousePressed() {
 
 function mouseDragged() {
   if( dragIndex ) {
-    blocks[dragIndex].dragging()
-    blocks[dragIndex].position.x += movedX;
-    blocks[dragIndex].position.y += movedY;
+    containers[dragIndex].dragging()
+    containers[dragIndex].position.x += movedX;
+    containers[dragIndex].position.y += movedY;
     overlapIndex = null;
-    for( let i = 0; i < blocks.length; i++ ) {
+    for( let i = 0; i < containers.length; i++ ) {
       if( dragIndex !== i ) {
-        if( !overlapIndex && blocks[dragIndex].overlapsWith( blocks[i] ) ) {
-          blocks[i].hoveredOver(); 
+        if( !overlapIndex && containers[dragIndex].overlapsWith( containers[i] ) ) {
+          containers[i].hoveredOver(); 
           overlapIndex = i;
         } else {
-          blocks[i].resetBG();
+          containers[i].resetBG();
         }
       }
     }
@@ -112,14 +108,14 @@ function mouseDragged() {
 
 function mouseReleased() {
   if( dragIndex && overlapIndex ) {
-    blocks[overlapIndex].resetBG()
-    blocks[dragIndex].resetBG()
-    if( blocks[dragIndex].x < blocks[overlapIndex].mid.x ) {
-      blocks[dragIndex].add(blocks[overlapIndex])
-      blocks.splice(overlapIndex,1);
+    containers[overlapIndex].resetBG()
+    containers[dragIndex].resetBG()
+    if( containers[dragIndex].x < containers[overlapIndex].mid.x ) {
+      containers[dragIndex].add(containers[overlapIndex])
+      containers.splice(overlapIndex,1);
     } else {
-      blocks[overlapIndex].add(blocks[dragIndex])  
-      blocks.splice(dragIndex,1)
+      containers[overlapIndex].add(containers[dragIndex])  
+      containers.splice(dragIndex,1)
     }    
   }
   dragIndex = null;
@@ -235,8 +231,6 @@ class Container {
     noStroke();
     fill(Container.stroke)
     text(word.text,-word.w/2+Word.PADDING.LEFT,Word.PADDING.BOTTOM)    
-    
-
     pop();
   } 
 
