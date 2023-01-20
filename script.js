@@ -11,9 +11,11 @@ function preload() {
 
 function loadInstructionBlocks(y) {
   let instructions = [
+    "r to reset",
     "drag and drop",
     "hover to combine",
-    "double click to separate"
+    "double click to separate",
+    "up and down to change size",
   ];
   for( let line of instructions ) {
     let x = 0;
@@ -36,20 +38,25 @@ function loadInstructionBlocks(y) {
 function setup() {
   createCanvas(windowWidth-20, windowHeight-20);
   words = shuffle(words).map( word => new Word(word) );
-  let x = 0;
+  layoutWords();
+  
+  background(255);
+}
+
+function layoutWords() {
+  blocks = [];
+  let x = Container.PADDING.INTER;
   let dy = Word.h;
-  let y = 0;
+  let y = Container.PADDING.INTER;
   for( let word of words ) {
     if( x + word.w > width ) {
       y += (dy+Container.PADDING.INTER);
-      x = 0;
+      x = Container.PADDING.INTER;
     }
     blocks.push(Container.createWithWordAt(word,createVector(x,y)));
     x += word.w+Container.PADDING.INTER;
   }
-  loadInstructionBlocks(y + 2 * dy );
-  
-  background(255);
+  loadInstructionBlocks(y + 2 * dy );  
 }
 
 function draw() {
@@ -119,10 +126,24 @@ function mouseReleased() {
   overlapIndex = null;
 }
 
+function keyPressed() {
+  if( keyCode === UP_ARROW ) {
+    textSize( textSize() + 1 );
+    layoutWords();
+  }
+  if( keyCode === DOWN_ARROW ) {
+    textSize( textSize() - 1);
+    layoutWords();
+  }
+  if( key === 'r' ) {
+    layoutWords();
+  }
+}
+
 class Word {
   constructor(text) {
     this.text = text;
-    this.wiggle = random(-PI/128,PI/128);
+    this.wiggle = random(-PI/64,PI/64);
   }
 
   get w() { return textWidth(this.text) + Word.PADDING.LEFT + Word.PADDING.RIGHT; }
@@ -249,4 +270,4 @@ Container.overlapBG = "#ff000010";
 Container.dragBG = "#0000ff10";
 Container.stroke = "black";
 Container.textColor = "black";
-Container.PADDING = {INTER:2, LEFT:2, RIGHT:2, TOP:4, BOTTOM:2};
+Container.PADDING = {INTER:3, LEFT:2, RIGHT:2, TOP:4, BOTTOM:2};
