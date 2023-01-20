@@ -18,8 +18,8 @@ and
 and
 and
 and
-and
-and
+&
+&
 apparatus
 are 
 are
