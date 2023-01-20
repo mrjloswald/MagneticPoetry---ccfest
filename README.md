@@ -1,9 +1,14 @@
-# p5.js
+Magnetic Poetry
+---------------
+## Concepts covered
+* reading data in from a file
+* object-oriented programming concepts in JavaScript
+* collision detection
+* using typography functions
+* events
+* thoughts for how to extend this
 
-This is the Template Repl for p5.js.
+## What will be produced
+At the very least, a program that works like a magnetic poetry board.
 
-p5.js is a JavaScript library for creative coding, with a focus on making coding accessible and inclusive for artists, designers, educators, beginners, and anyone else! p5.js is free and open-source because we believe software, and the tools to learn it, should be accessible to everyone.
-
-[Check out the official docs here](https://p5js.org/reference/).
-
-
+This session will hopefully live in the space where determination, programming, CS, creative coding, and literal poetry overlap. Starting from a list of words and a dream, we will develop a magnetic poetry program, learning CS, p5, life lessons, and poetic licensure along the way. There may also be a smidgeon of math. 
