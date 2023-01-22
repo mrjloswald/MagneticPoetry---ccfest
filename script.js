@@ -1,11 +1,12 @@
 let words;
 let containers = [];
-
+let myFont;
 let dragIndex; 
 let overlapIndex;
 
 function preload() {
   words = loadStrings("magneticPoetryWordList.txt");
+  myFont = loadFont('Nunito-Regular.ttf')
 }
 
 function loadInstructionBlocks(y) {
@@ -16,6 +17,8 @@ function loadInstructionBlocks(y) {
     "double click to separate",
     "up and down to change size",
   ];
+
+
   for( let line of instructions ) {
     let x = 0;
     let container;
@@ -36,6 +39,7 @@ function loadInstructionBlocks(y) {
 
 function setup() {
   createCanvas(windowWidth-20, windowHeight-20);
+  textFont(myFont);
   words = shuffle(words).map( word => new Word(word) );
   layoutWords();
   background(255);
@@ -148,7 +152,7 @@ class Word {
   static get h() { return textSize()+Word.PADDING.TOP+Word.PADDING.BOTTOM; }
 }
 
-Word.PADDING = {LEFT:2, RIGHT:2, TOP:2, BOTTOM:4}
+Word.PADDING = {LEFT:2, RIGHT:2, TOP:2, BOTTOM:2}
 
 class Container {
   constructor(word, position) {
@@ -230,7 +234,9 @@ class Container {
     rect(-word.w/2,-word.h/2,word.w,word.h)
     noStroke();
     fill(Container.stroke)
-    text(word.text,-word.w/2+Word.PADDING.LEFT,Word.PADDING.BOTTOM)    
+    // text(word.text,-word.w/2+Word.PADDING.LEFT,Word.PADDING.BOTTOM)    
+    const actualTextHeight = myFont.textBounds(word.text,0,0,textSize()).h
+    text(word.text,-word.w/2+Word.PADDING.LEFT,actualTextHeight/2)      
     pop();
   } 
 
