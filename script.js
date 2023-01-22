@@ -39,6 +39,7 @@ function setup() {
   words = shuffle(words).map( word => new Word(word) );
   layoutWords();
   background(255);
+  noLoop();
 }
 
 function layoutWords() {
@@ -55,6 +56,7 @@ function layoutWords() {
     x += word.w+Container.PADDING.INTER;
   }
   loadInstructionBlocks(y + 2 * dy );  
+  redraw();
 }
 
 function draw() {
@@ -72,6 +74,7 @@ function doubleClicked() {
       const b = containers[i];
       containers.splice(i,1);
       containers = [...containers, ...b.breakApart()]
+      redraw();
       return;
     }
   }
@@ -82,6 +85,7 @@ function mousePressed() {
   for( let i = 0; i < containers.length; i++ ) {
     if( containers[i].isMouseInside() ) {
       dragIndex = i;
+      redraw()
       return
     }
   }
@@ -103,6 +107,7 @@ function mouseDragged() {
         }
       }
     }
+    redraw();
   }
 }
 
@@ -120,6 +125,7 @@ function mouseReleased() {
   }
   dragIndex = null;
   overlapIndex = null;
+  redraw();
 }
 
 function keyPressed() {
