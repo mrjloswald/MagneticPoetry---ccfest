@@ -10,7 +10,6 @@ function preload() {
 
 function loadInstructionBlocks(y) {
   let instructions = [
-    'come to ccfest',
     "r to reset",
     "drag and drop",
     "hover to combine",
