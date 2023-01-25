@@ -23,8 +23,11 @@ function draw() {
       y += dy
       x = padding
     }
-    rect( x, y - textSize(), tw + 4, textSize() );
-    text(word,x + 2,y)
+    push()
+    translate(x,y)
+    rect( 0, 0 - textSize(), tw + 4, textSize() )
+    text(word,0 + 2,0)
+    pop()
     x += textWidth(word) + padding + 4
   }
 }
