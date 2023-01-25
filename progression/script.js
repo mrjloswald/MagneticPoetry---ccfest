@@ -1,5 +1,7 @@
 let words
 let containers = [] 
+let dragIndex 
+
 function preload() {
   words = loadStrings("magneticPoetryWordList.txt")
 }
@@ -14,7 +16,7 @@ function setup() {
   for( const word of words ) {
     const w = new Word(word)
     if( x + w.tw > width ) {
-      y += dy
+      y += dy;
       x = Word.PADDING
     }
     w.position = createVector(x,y)
@@ -33,6 +35,29 @@ function draw() {
       word.setDefaultBG()
     }
     word.draw()  
+  }
+}
+
+function mousePressed() {
+  for( let i = 0; i < containers.length; i++ ) {
+    if( containers[i].isMouseOver() ) {
+      dragIndex = i
+      return
+    }    
+  }
+}
+  
+function mouseDragged() {
+  if( dragIndex ) {
+    containers[dragIndex].position.x += movedX
+    containers[dragIndex].position.y += movedY
+  }
+}
+  
+function mouseReleased() {
+  if( dragIndex ) {
+    containers[dragIndex].setDefaultBG()
+    dragIndex = undefined
   }
 }
 
@@ -62,13 +87,10 @@ class Word {
   }
   
   isMouseOver() { 
-    const hw = this.blockWidth/2
-    const hh = textSize()/2
-
-    return mouseX > this.position.x - hw && 
-      mouseX < this.position.x + hw &&
-      mouseY > this.position.y - hh &&
-      mouseY < this.position.y + hh
+    return mouseX > this.position.x && 
+      mouseX < this.position.x + this.blockWidth &&
+      mouseY > this.position.y &&
+      mouseY < this.position.y + textSize()
   }
   
   setHoverBG() { this.bg = color(255,0,0,16) }
