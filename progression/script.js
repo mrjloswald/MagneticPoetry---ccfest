@@ -25,8 +25,9 @@ function draw() {
       y += dy
       x = padding
     }
-    push()
+    push();
     translate(x + blockWidth/2,y, textSize()/2)
+    rotate(random(-PI/100,PI/100))
     rect( 0, 0, blockWidth, textSize() )
     text(word,0 - tw/2, 0 + textSize()/2)
     pop()
