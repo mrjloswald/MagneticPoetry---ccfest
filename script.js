@@ -1,133 +1,135 @@
-let words;
-let containers = [];
+let words
+let containers = [] 
+let dragIndex 
+let overlapIndex 
 
-let dragIndex; 
-let overlapIndex;
+const instructions = [
+  "r to reset",
+  "click and drag",
+  "hover to combine",
+  "double click to separate",
+  "up and down to resize"
+]
 
 function preload() {
-  words = loadStrings("magneticPoetryWordList.txt");
-}
-
-function loadInstructionBlocks(y) {
-  let instructions = [
-    "r to reset",
-    "drag and drop",
-    "hover to combine",
-    "double click to separate",
-    "up and down to change size",
-  ];
-  for( let line of instructions ) {
-    let x = 0;
-    let container;
-    for( const text of line.split(' ') ) {
-      const word = new Word(text);
-      const wc = Container.createWithWordAt(word,createVector(x,y));
-      if( !container ) {
-        container = wc;
-      } else {
-        container.add(wc);
-      }
-      x += word.w + Container.PADDING.INTER;
-    }
-    containers.push(container);
-    y += Word.h;
-  }
+  words = loadStrings("magneticPoetryWordList.txt")
 }
 
 function setup() {
-  createCanvas(windowWidth-20, windowHeight-20);
-  words = shuffle(words).map( word => new Word(word) );
-  layoutWords();
-  background(255);
+  createCanvas(windowWidth-20, windowHeight-20) 
+  words = shuffle(words).map( word => new Word(word) )
+  layoutWords()
   noLoop();
 }
 
 function layoutWords() {
-  containers = [];
-  let x = Container.PADDING.INTER;
-  let dy = Word.h;
-  let y = Container.PADDING.INTER;
-  for( let word of words ) {
-    if( x + word.w > width ) {
-      y += (dy+Container.PADDING.INTER);
-      x = Container.PADDING.INTER;
+  containers = []
+  let x = Word.PADDING
+  let y = Word.h
+  let dy = Word.h
+  const nextPositionFor = (item) => {
+    if(x + item.w > width ) {
+      x = Word.PADDING
+      y += dy
     }
-    containers.push(Container.createWithWordAt(word,createVector(x,y)));
-    x += word.w+Container.PADDING.INTER;
+    position = {x,y}
+    x += item.w + Container.INTER
+    return position
   }
-  loadInstructionBlocks(y + 2 * dy );  
-  redraw();
+  
+  containers = words.map( word => new Container(word,nextPositionFor(word)))
+  
+  y += dy
+  
+  containers = [...containers, 
+    ...instructions.map( instruction => {
+      x = Word.PADDING
+      y += dy      
+      const [first,...rest] = instruction
+        .split(" ")
+        .map( word => new Word(word) )
+        .map( word => new Container(word,nextPositionFor(word)))   
+      rest.forEach( c => first.add(c) )
+      return first
+    })]  
+
+  redraw()
 }
 
 function draw() {
   background('white')
-  for( let b of containers ) {
-    b.draw();
+  for( const container of containers ) {
+    container.draw()  
   }
+}
+
+function mousePressed() {
+  dragIndex = mouseoverIndex()
+  redraw()
+}
+  
+function mouseDragged() { 
+  if( dragIndex ) { 
+    handleDrag()
+    redraw()
+  } 
+}
+
+function handleDrag() {
+  containers[dragIndex].setDragBG()
+  containers[dragIndex].position.x += movedX
+  containers[dragIndex].position.y += movedY
+  handleOverlap()
+}
+
+function handleOverlap() {
+  overlapIndex = null;
+  for( let i = 0; i < containers.length; i++ ) {
+    if( dragIndex !== i ) {
+      if( !overlapIndex && containers[dragIndex].overlapsWith( containers[i] ) ) {
+        containers[i].setOverlapBG(); 
+        overlapIndex = i;
+      } else {
+        containers[i].setDefaultBG();
+      }
+    }
+  }  
+}
+  
+function mouseReleased() {
+  if( dragIndex ) {
+    containers[dragIndex].setDefaultBG()
+    if( overlapIndex ) {
+      containers[overlapIndex].setDefaultBG()   
+      if( containers[dragIndex].x < containers[overlapIndex].midx ) {
+        containers[dragIndex].add(containers[overlapIndex])
+        containers.splice(overlapIndex,1);
+      } else {
+        containers[overlapIndex].add(containers[dragIndex])  
+        containers.splice(dragIndex,1)
+      }        
+    }
+  }
+  dragIndex = null;
+  overlapIndex = null;
+  redraw()
+}
+
+function mouseoverIndex() {
+  let i = containers.findIndex( container => container.isMouseOver() )
+  return i > -1 ? i : null
 }
 
 function doubleClicked() {
-  dragIndex = null;
-  overlapIndex = null;
-  for( let i = 0; i < containers.length; i++ ) {
-    if( containers[i].isMouseInside() && containers[i].words.length > 1 ) {
-      const b = containers[i];
-      containers.splice(i,1);
-      containers = [...containers, ...b.breakApart()]
-      redraw();
-      return;
-    }
+  const clickIndex = mouseoverIndex()
+  if( clickIndex && containers[clickIndex].words.length > 1 ) {
+    const c = containers[clickIndex]
+    containers.splice(clickIndex,1)
+    containers = [...containers, ...Container.separate(c)]    
   }
+  redraw()
 }
-
-
-function mousePressed() {
-  for( let i = 0; i < containers.length; i++ ) {
-    if( containers[i].isMouseInside() ) {
-      dragIndex = i;
-      redraw()
-      return
-    }
-  }
-}
-
-function mouseDragged() {
-  if( dragIndex ) {
-    containers[dragIndex].dragging()
-    containers[dragIndex].position.x += movedX;
-    containers[dragIndex].position.y += movedY;
-    overlapIndex = null;
-    for( let i = 0; i < containers.length; i++ ) {
-      if( dragIndex !== i ) {
-        if( !overlapIndex && containers[dragIndex].overlapsWith( containers[i] ) ) {
-          containers[i].hoveredOver(); 
-          overlapIndex = i;
-        } else {
-          containers[i].resetBG();
-        }
-      }
-    }
-    redraw();
-  }
-}
-
-function mouseReleased() {
-  if( dragIndex && overlapIndex ) {
-    containers[overlapIndex].resetBG()
-    containers[dragIndex].resetBG()
-    if( containers[dragIndex].x < containers[overlapIndex].mid.x ) {
-      containers[dragIndex].add(containers[overlapIndex])
-      containers.splice(overlapIndex,1);
-    } else {
-      containers[overlapIndex].add(containers[dragIndex])  
-      containers.splice(dragIndex,1)
-    }    
-  }
-  dragIndex = null;
-  overlapIndex = null;
-  redraw();
-}
-
+  
 function keyPressed() {
   if( keyCode === UP_ARROW ) {
     textSize( textSize() + 1 );
@@ -141,133 +143,92 @@ function keyPressed() {
     layoutWords();
   }
 }
-
+  
 class Word {
+  static PADDING = 2  
+  
   constructor(text) {
-    this.text = text;
-    this.wiggle = random(-PI/64,PI/64);
+    this.text = text
+    this.wiggle = random(-PI/100,PI/100)
   }
-
-  get w() { return textWidth(this.text) + Word.PADDING.LEFT + Word.PADDING.RIGHT; }
-  get h() { return Word.h; }
-
-  static get h() { return textSize()+Word.PADDING.TOP+Word.PADDING.BOTTOM; }
+  
+  get tw() { return textWidth(this.text) }
+  get w() { return this.tw + Word.PADDING + Word.PADDING }
+  get h() { return Word.h }
+  
+  static get h() { return textSize() + textDescent() + 2 * Word.PADDING }
 }
-
-Word.PADDING = {LEFT:2, RIGHT:2, TOP:2, BOTTOM:4}
-
+  
 class Container {
-  constructor(word, position) {
-    this.words = [word];
-    this.position = position;    
-    this.bg = Container.defaultBG;
-    this.stroke = Container.stroke;
+  static INTER = 2
+  
+  constructor(word,position) {
+    this.words = [word]
+    this.position = position;
+    this.bg = color('white')
   }
-
-  // quick aliases
-  get x() { return this.position.x } 
+  
+  get x() { return this.position.x }
   get y() { return this.position.y }
-  get lx() { return this.corners.topLeft.x }
-  get ly() { return this.corners.topLeft.y }
-  get rx() { return this.corners.bottomRight.x }
-  get ry() { return this.corners.bottomRight.y }
+  get midx() { return this.x + this.w/2 }
+  get h() { return Word.h }
   
   get w() { 
     return this.words
-      .reduce( (width, word) => width + word.w, 0) 
-      + Container.PADDING.INTER * (this.words.length - 1)
-  }
-  get h() { return textSize()+Word.PADDING.TOP+Word.PADDING.BOTTOM; }
-
-  get mid() {
-    return {
-      x: this.x + this.w/2,
-      y: this.h + this.h/2
-    }
-  }
+      .reduce( (width, word) => width + word.w, 0) +
+      Container.INTER * (this.words.length - 1)
+  }  
   
-  get corners() {
-    return {
-      topLeft: {x: this.x, y: this.y},
-      bottomRight: {x: this.x + this.w, y: this.y + this.h }
-    }
-  }
-
-  isMouseInside() {
-    return mouseX > this.lx &&
-      mouseX < this.rx &&
-      mouseY > this.ly &&
-      mouseY < this.ry 
-  } 
-
-  hoveredOver() { this.bg = Container.overlapBG;}
-  resetBG() { this.bg = Container.defaultBG } 
-  dragging() { this.bg = Container.dragBG }
-
-  overlapsWith( otherContainer ) {
-    return Container.overlap( this, otherContainer );
-  }
-
-  add( otherContainer ) {
-    this.words = [...this.words, ...otherContainer.words ];
-  }
-
+  setDragBG() { this.bg = color(255,0,0,128) }
+  setDefaultBG() { this.bg = color('white') } 
+  setOverlapBG() { this.bg = color(0,0,255,128) }
+  
+  isMouseOver() { return collidePointRect(mouseX, mouseY, this.x, this.y, this.w, this.h) }  
+  
   draw() {
-    push();
-    translate(this.x,this.y);
+    push()
+    translate(this.position.x, this.position.y) 
     let x = 0;
     for( let word of this.words ) {
-      this.drawWord(word,x,0);
-      x += word.w + Container.PADDING.INTER;
+      this.drawWord(word,x)
+      x += word.w + Container.INTER
     }
-    pop();
-  }
-
-  drawWord( word, x, y ) {
-    fill(this.bg);
-    stroke(Container.stroke)
-    // rect(x,y,word.w,word.h)
-    // noStroke();
-    // fill(Container.stroke)
-    // text(word.text,x+Word.PADDING.LEFT,y+word.h-Word.PADDING.BOTTOM)    
-    push();
-    translate(x+word.w/2, y+word.h/2);
-    rotate(word.wiggle);
+    pop()   
+  }  
+  
+  drawWord(word,x) {
+    push()
+    translate(x+word.w/2,word.h/2)
+    rotate(word.wiggle)
+    fill(this.bg)
+    stroke(64)
     rect(-word.w/2,-word.h/2,word.w,word.h)
-    noStroke();
-    fill(Container.stroke)
-    text(word.text,-word.w/2+Word.PADDING.LEFT,Word.PADDING.BOTTOM)    
-    pop();
-  } 
-
-  breakApart() {    
-    if( this.words.length > 1 ) {
-      const newWords = [];
-      let x = this.x;
-      for( let i = 0; i < this.words.length; i++ ) {
-        newWords.push( Container.createWithWordAt( new Word(this.words[i].text), createVector(x,this.y)));
-        x += Container.PADDING.INTER + 1 + this.words[i].w;
-      }
-      return newWords;
-    }
-    
+    fill("black")
+    noStroke()
+    text(word.text,-word.w/2 + Word.PADDING, textSize()/2 - textDescent()/2 - Word.PADDING)
+    pop()
   }
   
-  // https://www.geeksforgeeks.org/find-two-rectangles-overlap/
-  static overlap(a,b) {
-    // If one rectangle is on left side of other or above other
-    if (a.lx > b.rx || b.lx > a.rx || a.ry < b.ly || b.ry < a.ly) { return false; }
-    else { return true }
+  add(otherContainer) { this.words = [...this.words, ...otherContainer.words] }
+  
+  overlapsWith(otherContainer) {
+    return Container.overlap(this,otherContainer)
   }
-
-  static createWithWordAt( word, position ) {
-    return new Container( word, position );
+  
+  static overlap(a,b) { return collideRectRect(a.x, a.y, a.w, a.h, b.x, b.y, b.w, b.h) }
+  
+  static separate(c) {
+    const newContainers = []
+    let x = c.x
+    for( let i = 0; i < c.words.length; i++ ) {
+      newContainers.push( 
+        new Container( 
+          new Word( c.words[i].text ),
+          createVector( x, c.y )
+        )
+      );
+      x += Container.INTER + 1 + c.words[i].w
+    }
+    return newContainers;
   }
 }
-
-Container.defaultBG = "white";
-Container.overlapBG = "#ff000010";
-Container.dragBG = "#0000ff10";
-Container.stroke = "black";
-Container.textColor = "black";
-Container.PADDING = {INTER:3, LEFT:2, RIGHT:2, TOP:4, BOTTOM:2};
