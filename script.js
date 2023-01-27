@@ -19,7 +19,7 @@ function setup() {
   createCanvas(windowWidth-20, windowHeight-20) 
   words = shuffle(words).map( word => new Word(word) )
   layoutWords()
-  noLoop();
+  noLoop()
 }
 
 function layoutWords() {
