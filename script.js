@@ -1,14 +1,14 @@
 let words
 let containers = [] 
-let dragIndex 
+// let drag.index 
 let overlapIndex 
-
+let drag = {}
 const instructions = [
   "r to reset",
-  "click and drag",
+  "up and down to resize",
+  "click or touch and drag",
   "hover to combine",
-  "double click to separate",
-  "up and down to resize"
+  "double click or tap to separate",
 ]
 
 function preload() {
@@ -63,30 +63,58 @@ function draw() {
   }
 }
 
-function mousePressed() {
-  dragIndex = mouseoverIndex()
+function touchStarted() {
+  if( touches.length === 1 ) {
+    handleSingleSelection(touches[0].x, touches[0].y, "touch")
+  }
+}
+
+function handleSingleSelection(x,y,type) {
+  drag.index = selectIndex(x,y)
+  drag.type = type
+  drag.px = x
+  drag.py = y
   redraw()
 }
+
+function mousePressed() {
+  handleSingleSelection(mouseX,mouseY,"mouse")
+}
   
-function mouseDragged() { 
-  if( dragIndex ) { 
+function mouseDragged() { // also touchMoved
+  if( drag.index ) { 
     handleDrag()
     redraw()
   } 
 }
 
 function handleDrag() {
-  containers[dragIndex].setDragBG()
-  containers[dragIndex].position.x += movedX
-  containers[dragIndex].position.y += movedY
+  let dx, dy
+  if( drag.type === "mouse" ) {
+    dx = mouseX - drag.px
+    dy = mouseY - drag.py
+    drag.px = mouseX
+    drag.py = mouseY
+  } else {
+    dx = touches[0].x - drag.px
+    dy = touches[0].y - drag.py
+    drag.px = touches[0].x
+    drag.py = touches[0].y
+  }
+    
+  
+  containers[drag.index].setDragBG()
+  containers[drag.index].position.x += dx
+  containers[drag.index].position.y += dy
+
   handleOverlap()
 }
 
 function handleOverlap() {
   overlapIndex = null;
   for( let i = 0; i < containers.length; i++ ) {
-    if( dragIndex !== i ) {
-      if( !overlapIndex && containers[dragIndex].overlapsWith( containers[i] ) ) {
+    if( drag.index !== i ) {
+      if( !overlapIndex && containers[drag.index].overlapsWith( containers[i] ) ) {
         containers[i].setOverlapBG(); 
         overlapIndex = i;
       } else {
@@ -96,32 +124,32 @@ function handleOverlap() {
   }  
 }
   
-function mouseReleased() {
-  if( dragIndex ) {
-    containers[dragIndex].setDefaultBG()
+function mouseReleased() { // and touchEnded
+  if( drag.index ) {
+    containers[drag.index].setDefaultBG()
     if( overlapIndex ) {
       containers[overlapIndex].setDefaultBG()   
-      if( containers[dragIndex].x < containers[overlapIndex].midx ) {
-        containers[dragIndex].add(containers[overlapIndex])
+      if( containers[drag.index].x < containers[overlapIndex].midx ) {
+        containers[drag.index].add(containers[overlapIndex])
         containers.splice(overlapIndex,1);
       } else {
-        containers[overlapIndex].add(containers[dragIndex])  
-        containers.splice(dragIndex,1)
+        containers[overlapIndex].add(containers[drag.index])  
+        containers.splice(drag.index,1)
       }        
     }
   }
-  dragIndex = null;
+  drag = {};
   overlapIndex = null;
   redraw()
 }
 
-function mouseoverIndex() {
-  let i = containers.findIndex( container => container.isMouseOver() )
+function selectIndex(x,y) {
+  let i = containers.findIndex( container => container.isOver(x,y) )
   return i > -1 ? i : null
 }
 
 function doubleClicked() {
-  const clickIndex = mouseoverIndex()
+  const clickIndex = selectIndex(mouseX,mouseY)
   if( clickIndex && containers[clickIndex].words.length > 1 ) {
     const c = containers[clickIndex]
     containers.splice(clickIndex,1)
@@ -183,7 +211,7 @@ class Container {
   setDefaultBG() { this.bg = color('white') } 
   setOverlapBG() { this.bg = color(0,0,255,128) }
   
-  isMouseOver() { return collidePointRect(mouseX, mouseY, this.x, this.y, this.w, this.h) }  
+  isOver(x,y) { return collidePointRect(x, y, this.x, this.y, this.w, this.h) }  
   
   draw() {
     push()
