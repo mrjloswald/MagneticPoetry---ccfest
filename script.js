@@ -78,7 +78,22 @@ function handleSingleSelection(x,y,type) {
 }
 
 function mousePressed() {
+  if( mouseButton === RIGHT ) {
+    handleSplit(mouseX,mouseY)
+  }
   handleSingleSelection(mouseX,mouseY,"mouse")
+}
+
+function handleSplit(x,y) {
+  let index = selectIndex(x,y)
+  if( index && containers[index].words.length > 1 ) {
+    // determine which word in the container was clicked on
+    const selectedContainer = containers[index]
+    const xOffset = x - selectedContainer.x
+    containers.splice(index,1)
+    console.log( selectedContainer )
+    containers = [...containers,...selectedContainer.seperateAtOffset(xOffset)]
+  }
 }
   
 function mouseDragged() { // also touchMoved
@@ -190,8 +205,8 @@ class Word {
 class Container {
   static INTER = 2
   
-  constructor(word,position) {
-    this.words = [word]
+  constructor(words,position) { // a single, non-array word, or an array of words
+    this.words = Array.isArray(words) ? words : [words]
     this.position = position;
     this.bg = color('white')
   }
@@ -242,6 +257,30 @@ class Container {
   overlapsWith(otherContainer) {
     return Container.overlap(this,otherContainer)
   }
+
+  wordIndexAtX(xTarget) {
+    let x = 0;
+    return this.words
+    .map( word => {
+      const valueToReturn = x;
+      x += word.w + Container.INTER
+      return valueToReturn
+    })
+    .findIndex( i => xTarget < i ) - 1
+  }
+
+  seperateAtOffset(xOffset) {
+    const newContainers = []
+    const i = this.wordIndexAtX(xOffset)
+    if( i < this.words.length - 1 ) {
+      const left = this.words.slice(0,i+1)
+      const right = this.words.slice(i+1)
+      return [
+        new Container(left, {x:this.x, y:this.y}),
+        new Container(right, {x:this.x + xOffset + left[left.length-1].w + Container.INTER, y: this.y})
+      ]
+    }
+  }
   
   static overlap(a,b) { return collideRectRect(a.x, a.y, a.w, a.h, b.x, b.y, b.w, b.h) }
   
@@ -252,7 +291,7 @@ class Container {
       newContainers.push( 
         new Container( 
           new Word( c.words[i].text ),
-          createVector( x, c.y )
+          {x, y: c.y}
         )
       );
       x += Container.INTER + 1 + c.words[i].w
