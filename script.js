@@ -1,14 +1,14 @@
 let words
 let containers = [] 
-// let drag.index 
+let dragIndex 
 let overlapIndex 
-let drag = {}
+
 const instructions = [
   "r to reset",
-  "up and down to resize",
-  "click or touch and drag",
+  "click and drag",
   "hover to combine",
-  "double click or tap to separate",
+  "double click to separate",
+  "up and down to resize"
 ]
 
 function preload() {
@@ -18,103 +18,88 @@ function preload() {
 function setup() {
   createCanvas(windowWidth-20, windowHeight-20) 
   words = shuffle(words).map( word => new Word(word) )
-  layoutWords()
-  noLoop()
+  textAlign(CENTER,CENTER)
+  rectMode(CENTER)
+  layoutWords()  
+  noLoop();
 }
 
 function layoutWords() {
-  containers = []
   let x = Word.PADDING
-  let y = Word.h
   let dy = Word.h
+  let y = dy  
+  
   const nextPositionFor = (item) => {
-    if(x + item.w > width ) {
-      x = Word.PADDING
-      y += dy
+    x += item.w/2
+    // line break
+    if( x  + item.w/2 > width ) {
+      x = Container.INTER + item.w/2 
+      y += dy + Container.INTER
     }
-    position = {x,y}
-    x += item.w + Container.INTER
-    return position
+    const p = {x,y}
+    x += item.w/2 + Container.INTER
+    return p;
   }
   
-  containers = words.map( word => new Container(word,nextPositionFor(word)))
+  containers = words.map( word => new Container(word,nextPositionFor(word) ) )
   
   y += dy
-  
-  containers = [...containers, 
-    ...instructions.map( instruction => {
-      x = Word.PADDING
-      y += dy      
-      const [first,...rest] = instruction
-        .split(" ")
-        .map( word => new Word(word) )
-        .map( word => new Container(word,nextPositionFor(word)))   
-      rest.forEach( c => first.add(c) )
-      return first
-    })]  
 
+  for( const instruction of instructions ) { 
+    x = Word.PADDING
+    
+    y += dy
+    const [first,...rest] = instruction.split(" ")
+    const w = new Word(first)
+    const c = new Container(w,nextPositionFor(w))
+    rest.forEach( w => c.addText(w) )
+    containers.push(c)
+  }
   redraw()
 }
 
 function draw() {
   background('white')
+
   for( const container of containers ) {
     container.draw()  
   }
 }
 
-function touchStarted() {
-  if( touches.length === 1 ) {
-    handleSingleSelection(touches[0].x, touches[0].y, "touch")
+function mousePressed() {
+  for( let i = 0; i < containers.length; i++ ) {
+    if( containers[i].isMouseOver() ) {
+      dragIndex = i
+      containers[i].setDragBG()
+      redraw()
+      return
+    }    
   }
 }
-
-function handleSingleSelection(x,y,type) {
-  drag.index = selectIndex(x,y)
-  drag.type = type
-  drag.px = x
-  drag.py = y
-  redraw()
-}
-
-function mousePressed() {
-  handleSingleSelection(mouseX,mouseY,"mouse")
-}
   
-function mouseDragged() { // also touchMoved
-  if( drag.index ) { 
+function mouseDragged() { 
+  if( dragIndex ) { 
     handleDrag()
     redraw()
   } 
 }
 
 function handleDrag() {
-  let dx, dy
-  if( drag.type === "mouse" ) {
-    dx = mouseX - drag.px
-    dy = mouseY - drag.py
-    drag.px = mouseX
-    drag.py = mouseY
-  } else {
-    dx = touches[0].x - drag.px
-    dy = touches[0].y - drag.py
-    drag.px = touches[0].x
-    drag.py = touches[0].y
-  }
-    
-  
-  containers[drag.index].setDragBG()
-  containers[drag.index].position.x += dx
-  containers[drag.index].position.y += dy
-
+  containers[dragIndex].setDragBG()
+  updateDragPosition()
   handleOverlap()
+}
+
+function updateDragPosition() {
+  containers[dragIndex].position.x += movedX
+  containers[dragIndex].position.y += movedY
 }
 
 function handleOverlap() {
   overlapIndex = null;
   for( let i = 0; i < containers.length; i++ ) {
-    if( drag.index !== i ) {
-      if( !overlapIndex && containers[drag.index].overlapsWith( containers[i] ) ) {
+    if( dragIndex !== i ) {
+      if( !overlapIndex && containers[dragIndex].overlapsWith( containers[i] ) ) {
         containers[i].setOverlapBG(); 
         overlapIndex = i;
       } else {
@@ -124,38 +109,38 @@ function handleOverlap() {
   }  
 }
   
-function mouseReleased() { // and touchEnded
-  if( drag.index ) {
-    containers[drag.index].setDefaultBG()
+function mouseReleased() {
+  if( dragIndex ) {
+    containers[dragIndex].setDefaultBG()
     if( overlapIndex ) {
       containers[overlapIndex].setDefaultBG()   
-      if( containers[drag.index].x < containers[overlapIndex].midx ) {
-        containers[drag.index].add(containers[overlapIndex])
+      // which side do we add the dragged word onto ?
+      if( containers[dragIndex].x < containers[overlapIndex].midx ) {
+        containers[dragIndex].add(containers[overlapIndex])
         containers.splice(overlapIndex,1);
       } else {
-        containers[overlapIndex].add(containers[drag.index])  
-        containers.splice(drag.index,1)
+        containers[overlapIndex].add(containers[dragIndex])  
+        containers.splice(dragIndex,1)
       }        
     }
   }
-  drag = {};
+  dragIndex = null;
   overlapIndex = null;
   redraw()
 }
 
-function selectIndex(x,y) {
-  let i = containers.findIndex( container => container.isOver(x,y) )
-  return i > -1 ? i : null
-}
-
 function doubleClicked() {
-  const clickIndex = selectIndex(mouseX,mouseY)
-  if( clickIndex && containers[clickIndex].words.length > 1 ) {
-    const c = containers[clickIndex]
-    containers.splice(clickIndex,1)
-    containers = [...containers, ...Container.separate(c)]    
+  for( let i = 0; i < containers.length; i++ ) {
+    if( containers[i].isMouseOver() ) {
+      if( containers[i].words.length > 1 ) {
+        const c = containers[i]
+        containers.splice(i,1)
+        containers = [...containers, ...Container.separate(c)]
+      }
+      redraw()
+      return;
+    } 
   }
-  redraw()
 }
   
 function keyPressed() {
@@ -173,23 +158,22 @@ function keyPressed() {
 }
   
 class Word {
-  static PADDING = 2  
-  
   constructor(text) {
     this.text = text
     this.wiggle = random(-PI/100,PI/100)
   }
   
-  get tw() { return textWidth(this.text) }
+  // you need these for text resizing
+  get tw() { return textWidth(this.text) } 
   get w() { return this.tw + Word.PADDING + Word.PADDING }
-  get h() { return Word.h }
+  get h() { return Word.h; }
   
-  static get h() { return textSize() + textDescent() + 2 * Word.PADDING }
+  static get h() { return textSize() + 2 * Word.PADDING }
 }
+
+Word.PADDING = 2
   
 class Container {
-  static INTER = 2
-  
   constructor(word,position) {
     this.words = [word]
     this.position = position;
@@ -198,52 +182,60 @@ class Container {
   
   get x() { return this.position.x }
   get y() { return this.position.y }
-  get midx() { return this.x + this.w/2 }
-  get h() { return Word.h }
+  get lx() { return this.x - this.words[0].w/2 }
+  get uy() { return this.y-this.h/2 }
+  get midx() { return this.lx + this.w/2 }
   
   get w() { 
     return this.words
-      .reduce( (width, word) => width + word.w, 0) +
+      .reduce( (w, word) => w + word.w, 0) +
       Container.INTER * (this.words.length - 1)
-  }  
+  }
   
-  setDragBG() { this.bg = color(255,0,0,128) }
+  get h() { return Word.h }  
+  
+  addText(text) { this.addWord(new Word(text)) }
+  addWord(word) { this.words.push(word) }
+  
+  setDragBG() { this.bg = color(255,0,0,16) }
   setDefaultBG() { this.bg = color('white') } 
-  setOverlapBG() { this.bg = color(0,0,255,128) }
+  setOverlapBG() { this.bg = color(0,0,255,16) }
   
-  isOver(x,y) { return collidePointRect(x, y, this.x, this.y, this.w, this.h) }  
+  isMouseOver() { 
+    // have to adjust for rectMode CORNER
+    return collidePointRect(mouseX,mouseY,this.lx,this.uy,this.w,Word.h)
+  }
   
-  draw() {
+  draw() {    
     push()
-    translate(this.position.x, this.position.y) 
-    let x = 0;
-    for( let word of this.words ) {
-      this.drawWord(word,x)
-      x += word.w + Container.INTER
-    }
+    translate(this.x, this.y)       
+    this.drawWord(this.words[0]) 
+    for( let i = 1; i < this.words.length; i++ ) {
+      translate(this.words[i-1].w/2 + Container.INTER + this.words[i].w/2, 0)
+      this.drawWord(this.words[i]);      
+    } 
     pop()   
   }  
   
-  drawWord(word,x) {
+  drawWord(word) {    
     push()
-    translate(x+word.w/2,word.h/2)
     rotate(word.wiggle)
     fill(this.bg)
-    stroke(64)
-    rect(-word.w/2,-word.h/2,word.w,word.h)
+    rect(0,0,word.w,word.h)
     fill("black")
-    noStroke()
-    text(word.text,-word.w/2 + Word.PADDING, textSize()/2 - textDescent()/2 - Word.PADDING)
+    text(word.text,0,0)
     pop()
   }
   
-  add(otherContainer) { this.words = [...this.words, ...otherContainer.words] }
+  add(otherContainer) {
+    this.words = [...this.words, ...otherContainer.words]
+  }
   
   overlapsWith(otherContainer) {
     return Container.overlap(this,otherContainer)
   }
   
-  static overlap(a,b) { return collideRectRect(a.x, a.y, a.w, a.h, b.x, b.y, b.w, b.h) }
+  static overlap(a,b) { return collideRectRect(a.lx, a.uy, a.w, a.h, b.lx, b.uy, b.w, b.h) }
   
   static separate(c) {
     const newContainers = []
@@ -252,11 +244,15 @@ class Container {
       newContainers.push( 
         new Container( 
           new Word( c.words[i].text ),
-          createVector( x, c.y )
+          {x,y: c.y}
         )
       );
-      x += Container.INTER + 1 + c.words[i].w
+      if( i < c.words.length - 1 ) { // no need to update x on the last one
+        x += c.words[i].w/2 + Container.INTER + 1 + c.words[i+1].w/2  
+      }      
     }
     return newContainers;
   }
 }
+  
+Container.INTER = 2
